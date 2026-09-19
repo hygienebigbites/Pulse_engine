@@ -1,0 +1,48 @@
+# Render Blueprint — lets Render auto-configure this service when you
+# connect the repo, instead of clicking through settings manually.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: hybb-ai-call-listener
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Render sets PORT automatically — do not set it here.
+      - key: SLASHRTC_BASE_URL
+        sync: false
+      - key: SLASHRTC_USERNAME
+        sync: false
+      - key: SLASHRTC_PASSWORD
+        sync: false
+      - key: TRANSCRIPTION_PROVIDER
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: DEEPGRAM_MODEL
+        sync: false
+      - key: DEEPGRAM_LANGUAGE
+        sync: false
+      - key: LLM_PROVIDER
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: ORDER_ID_REGEX
+        sync: false
+      - key: BACKEND_SHARED_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: "*"
