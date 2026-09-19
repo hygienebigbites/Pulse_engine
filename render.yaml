@@ -6,7 +6,6 @@ services:
     name: hybb-ai-call-listener
     runtime: node
     plan: free
-    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
