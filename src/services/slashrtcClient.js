@@ -73,7 +73,7 @@ function buildClient() {
     baseURL: config.slashrtc.baseUrl,
     jar,
     withCredentials: true,
-    timeout: 30000,
+    timeout: 120000,
     headers: {
       'User-Agent': 'Mozilla/5.0 (HYBB-AI-Call-Listener/1.0)',
     },
