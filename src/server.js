@@ -9,6 +9,8 @@ const healthRoute = require('./routes/health');
 const processRoute = require('./routes/process');
 const uploadRoute = require('./routes/upload');
 const bulkRoute = require('./routes/bulk');
+const jobsRoute = require('./routes/jobs');
+const diagRoute = require('./routes/diag');
 
 const app = express();
 
@@ -36,9 +38,14 @@ function requireSharedSecret(req, res, next) {
 }
 
 app.use('/api/health', healthRoute);
+// Cheap authenticated check: lets the Sheet confirm BOTH that the backend is up
+// and that its stored secret is correct before starting a batch.
+app.get('/api/ping', requireSharedSecret, (req, res) => res.json({ success: true, time: new Date().toISOString() }));
 app.use('/api/process', requireSharedSecret, processRoute);
 app.use('/api/upload', requireSharedSecret, uploadRoute);
 app.use('/api/bulk', requireSharedSecret, bulkRoute);
+app.use('/api/jobs', requireSharedSecret, jobsRoute);
+app.use('/api/diag', requireSharedSecret, diagRoute);
 
 // Serve the built-in frontend (see ../../frontend). Deploy behind your own
 // static host / CDN in production if you prefer.

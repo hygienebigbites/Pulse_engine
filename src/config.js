@@ -14,7 +14,13 @@ module.exports = {
     username: process.env.SLASHRTC_USERNAME || '',
     password: process.env.SLASHRTC_PASSWORD || '',
     loginPath: '/index.php/login/validate',
+    // Per-request timeout for calls to SlashRTC (login page, login POST, recording
+    // download). Was a hard-coded 30000.
+    timeoutMs: parseInt(process.env.SLASHRTC_TIMEOUT_MS || '60000', 10),
   },
+
+  // How many /api/process jobs may run at the same time on this backend.
+  maxConcurrentJobs: parseInt(process.env.MAX_CONCURRENT_JOBS || '2', 10),
 
   transcription: {
     provider: (process.env.TRANSCRIPTION_PROVIDER || 'mock').toLowerCase(), // deepgram | mock

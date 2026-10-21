@@ -14,6 +14,7 @@ const fs = require('fs');
 const axios = require('axios');
 const config = require('../config');
 const logger = require('../utils/logger');
+const jobContext = require('../utils/jobContext');
 
 async function transcribe(filePath, contentType) {
   if (config.transcription.provider === 'deepgram') {
@@ -49,6 +50,7 @@ async function transcribeWithDeepgram(filePath, contentType) {
       },
       maxBodyLength: Infinity,
       timeout: 120000,
+      signal: jobContext.signal(),
     }
   );
 

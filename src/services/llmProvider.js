@@ -9,6 +9,7 @@
 const axios = require('axios');
 const config = require('../config');
 const logger = require('../utils/logger');
+const jobContext = require('../utils/jobContext');
 
 function extractJsonBlock(text) {
   // Models sometimes wrap JSON in prose or code fences — pull out the
@@ -53,11 +54,13 @@ async function callAnthropic(systemPrompt, userPrompt) {
           'content-type': 'application/json',
         },
         timeout: 60000,
+        signal: jobContext.signal(),
       }
     );
     const text = res.data?.content?.[0]?.text || '';
     return extractJsonBlock(text);
   } catch (err) {
+    jobContext.throwIfCancelled(); // a cancelled job must stop, not fall back to rule-based
     logger.error('Anthropic call failed', err.response?.data || err.message);
     return null;
   }
@@ -85,11 +88,13 @@ async function callOpenAI(systemPrompt, userPrompt) {
           'content-type': 'application/json',
         },
         timeout: 60000,
+        signal: jobContext.signal(),
       }
     );
     const text = res.data?.choices?.[0]?.message?.content || '';
     return extractJsonBlock(text);
   } catch (err) {
+    jobContext.throwIfCancelled(); // a cancelled job must stop, not fall back to rule-based
     logger.error('OpenAI call failed', err.response?.data || err.message);
     return null;
   }
@@ -119,11 +124,13 @@ async function callGroq(systemPrompt, userPrompt) {
           'content-type': 'application/json',
         },
         timeout: 60000,
+        signal: jobContext.signal(),
       }
     );
     const text = res.data?.choices?.[0]?.message?.content || '';
     return extractJsonBlock(text);
   } catch (err) {
+    jobContext.throwIfCancelled(); // a cancelled job must stop, not fall back to rule-based
     logger.error('Groq call failed', err.response?.data || err.message);
     return null;
   }

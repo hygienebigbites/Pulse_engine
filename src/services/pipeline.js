@@ -10,6 +10,7 @@ const transcriptionService = require('./transcriptionService');
 const speakerResolver = require('./speakerResolver');
 const extractionService = require('./extractionService');
 const logger = require('../utils/logger');
+const jobContext = require('../utils/jobContext');
 
 /**
  * Logs the recording's channel count (mono vs stereo). This matters a lot:
@@ -36,9 +37,12 @@ async function logAudioChannelInfo(filePath) {
 
 async function runPipeline({ filePath, contentType, callMeta, cleanupFile = true }) {
   try {
+    jobContext.throwIfCancelled();
     await logAudioChannelInfo(filePath);
     const rawSegments = await transcriptionService.transcribe(filePath, contentType);
+    jobContext.throwIfCancelled();
     const resolution = await speakerResolver.resolveSpeakers(rawSegments);
+    jobContext.throwIfCancelled();
     const analysis = await extractionService.extractCallData(resolution.segments, callMeta);
 
     return {

@@ -13,6 +13,7 @@
 const config = require('../config');
 const llmProvider = require('./llmProvider');
 const logger = require('../utils/logger');
+const { extractOrderId, reconcileOrderId } = require('./orderIdExtractor');
 
 function extractOrderIdsRegex(fullText) {
   const re = new RegExp(config.orderIdRegex, 'g');
@@ -71,12 +72,21 @@ function ruleBasedExtraction(resolvedSegments, callMeta) {
   const customerText = customerSegments.map(s => s.text).join(' ');
   const agentText = agentSegments.map(s => s.text).join(' ');
 
-  const orderIds = extractOrderIdsRegex(fullText);
+  // Order ID detection now ignores phone numbers / amounts / OTPs / dates and
+  // understands spoken digits (see orderIdExtractor.js). ORDER_ID_REGEX still
+  // defines what a full order ID looks like.
+  const orderExt = extractOrderId(resolvedSegments);
+  const orderIds = orderExt.orderIdCandidates || orderExt.candidates.filter(c => c.kind === 'full').map(c => c.value);
   const customerIssue = customerSegments[0]?.text || null;
   const agentResponse = agentSegments.map(s => s.text).join(' ') || null;
 
   return {
-    orderId: orderIds[0] || null,
+    orderId: orderExt.orderId,
+    orderIdLast4: orderExt.orderIdLast4,
+    orderIdConfidence: orderExt.confidence,
+    orderIdSource: orderExt.source,
+    orderIdNeedsReview: orderExt.needsReview,
+    orderIdReason: orderExt.reason,
     orderIdCandidates: orderIds,
     item: null, // rule-based mode can't reliably name the menu item — needs an LLM
     complaintCategory: ruleBasedComplaintCategory(fullText.toLowerCase()),
@@ -164,8 +174,15 @@ Score every agentQA parameter even if the call is short — use your best judgme
     result.agentQA.weightedScore = computeWeightedQaScore(result.agentQA.parameters);
   }
 
+  // Validate the AI's order ID against the transcript (see reconcileOrderId).
+  const orderFields = reconcileOrderId(result.orderId, resolvedSegments);
+  if (Array.isArray(result.orderIdCandidates) && result.orderIdCandidates.length) {
+    orderFields.orderIdCandidates = [...new Set([...orderFields.orderIdCandidates, ...result.orderIdCandidates.map(String)])];
+  }
+
   return {
     ...result,
+    ...orderFields,
     customerSummary: result.customerSummary || result.customerIssue,
     agentSummary: result.agentSummary || result.agentResponse,
     extractionMethod: `llm:${config.llm.provider}`,

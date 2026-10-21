@@ -33,6 +33,7 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const logger = require('../utils/logger');
+const jobContext = require('../utils/jobContext');
 
 const AUDIO_CONTENT_TYPES = ['audio/', 'video/', 'application/octet-stream'];
 
@@ -73,7 +74,8 @@ function buildClient() {
     baseURL: config.slashrtc.baseUrl,
     jar,
     withCredentials: true,
-    timeout: 120000,
+    timeout: config.slashrtc.timeoutMs,
+    signal: jobContext.signal(), // aborts every request below when the job is cancelled
     headers: {
       'User-Agent': 'Mozilla/5.0 (HYBB-AI-Call-Listener/1.0)',
     },
@@ -167,6 +169,7 @@ function extractMediaUrlFromJson(json) {
 async function fetchRecording(playUrl, downloadDir) {
   const { client } = buildClient();
   await login(client);
+  jobContext.throwIfCancelled();
 
   const firstRes = await client.get(playUrl, { responseType: 'arraybuffer', maxRedirects: 5 });
 
