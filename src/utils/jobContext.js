@@ -44,4 +44,15 @@ function throwIfCancelled() {
   if (isCancelled()) throw new CancelledError();
 }
 
-module.exports = { run, current, signal, isCancelled, throwIfCancelled, CancelledError };
+/** Records WHICH step the job is on, so a timeout can say exactly where it hung. */
+function setStage(label) {
+  const ctx = current();
+  if (ctx) ctx.stage = label;
+}
+
+function stage() {
+  const ctx = current();
+  return (ctx && ctx.stage) || null;
+}
+
+module.exports = { setStage, stage, run, current, signal, isCancelled, throwIfCancelled, CancelledError };

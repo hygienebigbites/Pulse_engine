@@ -48,6 +48,29 @@ function classifyError(err) {
   return { errorType: 'processing_error', httpStatus: 502 };
 }
 
+/**
+ * Turns "timeout of 60000ms exceeded" into a message that says WHERE it hung
+ * and what that usually means.
+ */
+function explainFailure(err, errorType, stage) {
+  const raw = String(err.message || err);
+  if (!stage || (errorType !== 'upstream_timeout' && errorType !== 'upstream_unreachable')) return raw;
+  const secs = (raw.match(/timeout of (\d+)ms/i) || [])[1];
+  const took = secs ? ` after ${Math.round(Number(secs) / 1000)} seconds` : '';
+  const where = `while ${stage.step}`;
+  let cause;
+  if (stage.service === 'SlashRTC') {
+    cause = errorType === 'upstream_timeout'
+      ? 'SlashRTC did not answer this server at all. The most likely cause is that SlashRTC is not accepting connections from this server\'s IP address (it is not on their allow-list), or SlashRTC itself is down. Admin: use "Run Connection Diagnostics" to see this server\'s IP address.'
+      : 'This server could not connect to SlashRTC (' + (err.code || raw) + '). Check that SlashRTC is online and the address is correct.';
+  } else {
+    cause = errorType === 'upstream_timeout'
+      ? stage.service + ' did not answer in time. It may be slow or down; trying again in a few minutes usually works. SlashRTC was reached fine.'
+      : 'Could not connect to ' + stage.service + ' (' + (err.code || raw) + '). SlashRTC was reached fine.';
+  }
+  return `${errorType === 'upstream_timeout' ? 'Timed out' + took : 'Failed'} ${where}. ${cause}`;
+}
+
 router.post('/', async (req, res) => {
   const { recordingUrl, callId, callDate, direction, jobId: clientJobId } = req.body || {};
 
@@ -87,7 +110,8 @@ router.post('/', async (req, res) => {
   });
 
   try {
-    const result = await jobContext.run({ controller: job.controller }, async () => {
+    job.ctx = { controller: job.controller, stage: null };
+    const result = await jobContext.run(job.ctx, async () => {
       const { filePath, contentType } = await slashrtcClient.fetchRecording(recordingUrl, TMP_DIR);
       return runPipeline({ filePath, contentType, callMeta });
     });
@@ -95,13 +119,16 @@ router.post('/', async (req, res) => {
     return res.json({ ...result, jobId });
   } catch (err) {
     const { errorType, httpStatus } = classifyError(err);
+    const stage = (job.ctx && job.ctx.stage) || null;
     jobStore.finish(jobId, errorType === 'cancelled' ? 'cancelled' : 'failed');
-    logger.error(`POST /api/process failed (${errorType}) job=${jobId}`, err.message);
+    logger.error(`POST /api/process failed (${errorType}) at "${stage ? stage.step : 'start'}" job=${jobId}`, err.message);
     if (res.writableEnded || res.destroyed) return undefined;
     return res.status(httpStatus).json({
       success: false,
       errorType,
-      error: errorType === 'cancelled' ? 'Job was cancelled.' : err.message,
+      error: errorType === 'cancelled' ? 'Job was cancelled.' : explainFailure(err, errorType, stage),
+      stage: stage ? stage.step : null,
+      service: stage ? stage.service : null,
       jobId,
       callMeta,
       hint: 'If SlashRTC auto-fetch keeps failing, download the recording manually and use the "Upload audio file" option instead.',

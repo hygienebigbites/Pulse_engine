@@ -39,10 +39,12 @@ async function runPipeline({ filePath, contentType, callMeta, cleanupFile = true
   try {
     jobContext.throwIfCancelled();
     await logAudioChannelInfo(filePath);
+    jobContext.setStage({ step: 'transcribing the audio', service: 'the transcription service (' + require('../config').transcriptionProvider + ')' });
     const rawSegments = await transcriptionService.transcribe(filePath, contentType);
     jobContext.throwIfCancelled();
     const resolution = await speakerResolver.resolveSpeakers(rawSegments);
     jobContext.throwIfCancelled();
+    jobContext.setStage({ step: 'analysing the transcript with the AI', service: 'the AI service (' + require('../config').llmProvider + ')' });
     const analysis = await extractionService.extractCallData(resolution.segments, callMeta);
 
     return {

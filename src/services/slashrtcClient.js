@@ -96,7 +96,9 @@ async function login(client) {
   // cookie SlashRTC sets on page-load is already present when we submit the
   // form. Some PHP session setups reject a form POST that arrives "cold"
   // without this, even with correct credentials.
+  jobContext.setStage({ step: 'opening the SlashRTC login page', service: 'SlashRTC' });
   await client.get('/index.php/login', { maxRedirects: 5 });
+  jobContext.setStage({ step: 'logging in to SlashRTC', service: 'SlashRTC' });
 
   const params = new URLSearchParams();
   params.append('username', config.slashrtc.username);
@@ -171,6 +173,7 @@ async function fetchRecording(playUrl, downloadDir) {
   await login(client);
   jobContext.throwIfCancelled();
 
+  jobContext.setStage({ step: 'downloading the recording page from SlashRTC', service: 'SlashRTC' });
   const firstRes = await client.get(playUrl, { responseType: 'arraybuffer', maxRedirects: 5 });
 
   if (firstRes.status >= 400) {
@@ -206,6 +209,7 @@ async function fetchRecording(playUrl, downloadDir) {
       );
     }
 
+    jobContext.setStage({ step: 'downloading the audio file from SlashRTC', service: 'SlashRTC' });
     const mediaRes = await client.get(mediaUrl, { responseType: 'arraybuffer', maxRedirects: 5 });
     if (mediaRes.status >= 400) {
       throw new Error(`SlashRTC returned HTTP ${mediaRes.status} fetching the embedded media URL.`);
